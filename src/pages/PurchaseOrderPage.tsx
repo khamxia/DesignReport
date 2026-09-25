@@ -31,7 +31,7 @@ export default function PurchaseOrderPage() {
   const [toast, setToast] = useState('');
   const [detailOrder, setDetailOrder] = useState<typeof purchaseOrders[0] | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [createForm, setCreateForm] = useState({ vehicleId: '', supplier: '', orderDate: '', notes: '' });
+  const [createForm, setCreateForm] = useState({ vehicleId: '', supplier: '', orderDate: '', notes: '', currency: 'THB', usdRate: '' });
   const [orderItems, setOrderItems] = useState<OrderItem[]>([{ name: '', qty: '1', unit: 'ชิ้น', estimatedPrice: '' }]);
 
   const vehicleMap = useMemo(() => Object.fromEntries(vehicles.map(v => [v.id, v])), []);
@@ -53,7 +53,7 @@ export default function PurchaseOrderPage() {
   const handleCreate = () => {
     setShowCreate(false);
     setToast('สร้าง Order สำเร็จ');
-    setCreateForm({ vehicleId: '', supplier: '', orderDate: '', notes: '' });
+    setCreateForm({ vehicleId: '', supplier: '', orderDate: '', notes: '', currency: 'THB', usdRate: '' });
     setOrderItems([{ name: '', qty: '1', unit: 'ชิ้น', estimatedPrice: '' }]);
   };
 
@@ -203,6 +203,25 @@ export default function PurchaseOrderPage() {
                   <input type="date" value={createForm.orderDate} onChange={e => setCreateForm(f => ({ ...f, orderDate: e.target.value }))} className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
                 </div>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">สกุลเงิน</label>
+                  <div className="relative">
+                    <select value={createForm.currency} onChange={e => setCreateForm(f => ({ ...f, currency: e.target.value, usdRate: '' }))} className="w-full appearance-none px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200 bg-white">
+                      <option value="LAK">LAK / ກີບ</option>
+                      <option value="THB">THB / บาท</option>
+                      <option value="USD">USD / ดอลลาร์</option>
+                    </select>
+                    <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+                {createForm.currency === 'USD' && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">อัตราแลกเปลี่ยน (1 USD = ? THB)</label>
+                    <input type="number" value={createForm.usdRate} onChange={e => setCreateForm(f => ({ ...f, usdRate: e.target.value }))} placeholder="เช่น 35.5" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-200" />
+                  </div>
+                )}
+              </div>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium text-slate-700">รายการสินค้า</label>
@@ -219,6 +238,18 @@ export default function PurchaseOrderPage() {
                     </div>
                   ))}
                 </div>
+                {(() => {
+                  const currencySymbol = createForm.currency === 'LAK' ? '₭' : createForm.currency === 'USD' ? '$' : '฿';
+                  const total = orderItems.reduce((sum, item) => sum + (parseFloat(item.qty) || 0) * (parseFloat(item.estimatedPrice) || 0), 0);
+                  return total > 0 ? (
+                    <div className="flex justify-end mt-2 text-sm font-semibold text-slate-700">
+                      รวม: <span className="ml-1 text-slate-900">{currencySymbol}{total.toLocaleString()}</span>
+                      {createForm.currency === 'USD' && createForm.usdRate && (
+                        <span className="ml-2 text-xs font-normal text-slate-400">(≈ ฿{(total * parseFloat(createForm.usdRate)).toLocaleString()})</span>
+                      )}
+                    </div>
+                  ) : null;
+                })()}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">หมายเหตุ</label>

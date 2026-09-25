@@ -308,6 +308,8 @@ function CreatePlanModal({ open, onClose, onSuccess }: CreatePlanModalProps) {
   const [dueDate, setDueDate] = useState('');
   const [assignee, setAssignee] = useState('');
   const [estimatedCost, setEstimatedCost] = useState('');
+  const [currency, setCurrency] = useState('THB');
+  const [usdRate, setUsdRate] = useState('');
   const [notes, setNotes] = useState('');
 
   const [itemName, setItemName] = useState('');
@@ -322,6 +324,8 @@ function CreatePlanModal({ open, onClose, onSuccess }: CreatePlanModalProps) {
     setDueDate('');
     setAssignee('');
     setEstimatedCost('');
+    setCurrency('THB');
+    setUsdRate('');
     setNotes('');
     setItemName('');
     setItemCategory('');
@@ -435,7 +439,7 @@ function CreatePlanModal({ open, onClose, onSuccess }: CreatePlanModalProps) {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">ค่าประมาณรวม (บาท)</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">ค่าประมาณรวม</label>
               <input
                 type="number"
                 value={estimatedCost}
@@ -445,6 +449,22 @@ function CreatePlanModal({ open, onClose, onSuccess }: CreatePlanModalProps) {
                 className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#1565C0]/30 focus:border-[#1565C0]"
               />
             </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-1.5">สกุลเงิน</label>
+              <select value={currency} onChange={e => setCurrency(e.target.value)}
+                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565C0]/30 focus:border-[#1565C0]">
+                <option value="THB">THB — บาท</option>
+                <option value="LAK">LAK — ກີບ</option>
+                <option value="USD">USD — ดอลลาร์</option>
+              </select>
+            </div>
+            {currency === 'USD' && (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">อัตราแลกเปลี่ยน (1 USD = ? THB)</label>
+                <input type="number" value={usdRate} onChange={e => setUsdRate(e.target.value)} placeholder="35"
+                  className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1565C0]/30 focus:border-[#1565C0]" />
+              </div>
+            )}
           </div>
 
           <div>

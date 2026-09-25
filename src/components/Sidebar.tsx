@@ -2,15 +2,16 @@ import { useState } from 'react';
 import {
   LayoutDashboard, Car, Wrench, FileText, CalendarClock,
   BarChart3, Settings, ChevronDown, ChevronRight,
-  TrendingUp, Receipt, ClipboardList, Package,
-  Layers, Bookmark, Menu, X
+  TrendingUp, Receipt, ClipboardList, Package, ShoppingCart,
+  Menu, X
 } from 'lucide-react';
 
 type Page =
   | 'dashboard' | 'vehicles' | 'vehicle-detail'
   | 'repair-management' | 'maintenance-management' | 'purchase-orders'
   | 'documents'
-  | 'overview' | 'vehicle-status' | 'repair-cost' | 'doc-cost' | 'maintenance-plan' | 'custom-report' | 'saved-reports';
+  | 'overview' | 'vehicle-status' | 'repair-cost' | 'doc-cost' | 'maintenance-plan'
+  | 'purchase-order-report';
 
 interface SidebarProps {
   currentPage: Page;
@@ -29,12 +30,11 @@ const reportSubMenu = [
   { id: 'repair-cost' as Page, label: 'ค่าใช้จ่ายซ่อมบำรุง', icon: Wrench },
   { id: 'doc-cost' as Page, label: 'ค่าใช้จ่ายเอกสาร', icon: Receipt },
   { id: 'maintenance-plan' as Page, label: 'แผนการซ่อมบำรุง', icon: ClipboardList },
-  { id: 'custom-report' as Page, label: 'รายงานรวม', icon: Layers },
-  { id: 'saved-reports' as Page, label: 'Saved Reports', icon: Bookmark },
+  { id: 'purchase-order-report' as Page, label: 'รายงานการสั่งซื้ออะไหล่', icon: ShoppingCart },
 ];
 
 const repairPages = new Set<Page>(['repair-management', 'maintenance-management', 'purchase-orders']);
-const reportPages = new Set<Page>(['overview', 'vehicle-status', 'repair-cost', 'doc-cost', 'maintenance-plan', 'custom-report', 'saved-reports']);
+const reportPages = new Set<Page>(['overview', 'vehicle-status', 'repair-cost', 'doc-cost', 'maintenance-plan', 'purchase-order-report']);
 
 export default function Sidebar({ currentPage, onNavigate }: SidebarProps) {
   const [reportOpen, setReportOpen] = useState(true);

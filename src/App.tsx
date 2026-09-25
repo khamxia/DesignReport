@@ -15,14 +15,15 @@ import VehicleStatusPage from './pages/VehicleStatusPage';
 import RepairCostPage from './pages/RepairCostPage';
 import DocCostPage from './pages/DocCostPage';
 import MaintenancePlanPage from './pages/MaintenancePlanPage';
-import CustomReportPage from './pages/CustomReportPage';
-import SavedReportsPage from './pages/SavedReportsPage';
+import PurchaseOrderReportPage from './pages/PurchaseOrderReportPage';
+
 
 type Page =
   | 'dashboard' | 'vehicles' | 'vehicle-detail'
   | 'repair-management' | 'maintenance-management' | 'purchase-orders'
   | 'documents'
-  | 'overview' | 'vehicle-status' | 'repair-cost' | 'doc-cost' | 'maintenance-plan' | 'custom-report' | 'saved-reports';
+  | 'overview' | 'vehicle-status' | 'repair-cost' | 'doc-cost' | 'maintenance-plan'
+  | 'purchase-order-report';
 
 const pageTitles: Record<Page, string> = {
   dashboard: 'Dashboard',
@@ -37,8 +38,7 @@ const pageTitles: Record<Page, string> = {
   'repair-cost': 'ค่าใช้จ่ายซ่อมบำรุง',
   'doc-cost': 'ค่าใช้จ่ายเอกสาร',
   'maintenance-plan': 'แผนการซ่อมบำรุง',
-  'custom-report': 'รายงานรวม',
-  'saved-reports': 'Saved Reports',
+  'purchase-order-report': 'รายงานการสั่งซื้ออะไหล่',
 };
 
 export default function App() {
@@ -65,9 +65,8 @@ export default function App() {
       case 'repair-cost': return <RepairCostPage />;
       case 'doc-cost': return <DocCostPage />;
       case 'maintenance-plan': return <MaintenancePlanPage />;
-      case 'custom-report': return <CustomReportPage />;
-      case 'saved-reports': return <SavedReportsPage />;
-      default: return <DashboardPage />;
+      case 'purchase-order-report': return <PurchaseOrderReportPage />;
+default: return <DashboardPage />;
     }
   };
 
