@@ -1,0 +1,10 @@
+{
+  "description": "Generate professional design reports effortlessly, tailored for designers and teams to showcase their work and insights effectively.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
