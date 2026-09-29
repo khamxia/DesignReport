@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   Search, Download, ChevronDown, ChevronUp, Car, Wrench,
-  Package, ShoppingCart, DollarSign,
+  Package, ShoppingCart, DollarSign, X,
 } from 'lucide-react';
 import {
   BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
@@ -47,9 +47,18 @@ function StatusBadge({ status }: { status: string }) {
 
 // ─── Report Tab: By Vehicle ───────────────────────────────────────────────────
 
+type VehicleRow = {
+  v: typeof vehicles[0];
+  repairs: typeof repairRecords;
+  parts: typeof repairItems;
+  repairTotal: number;
+  partsTotal: number;
+};
+
 function ByVehicleReport({ includeMode }: { includeMode: IncludeMode }) {
   const [search, setSearch] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [detailVehicle, setDetailVehicle] = useState<VehicleRow | null>(null);
 
   const rows = useMemo(() => vehicles.map(v => {
     const repairs = repairRecords.filter(r => r.vehicleId === v.id);
@@ -90,67 +99,74 @@ function ByVehicleReport({ includeMode }: { includeMode: IncludeMode }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filtered.map(({ v, repairs, parts, repairTotal, partsTotal }) => (
-                <>
-                  <tr key={v.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpanded(expanded === v.id ? null : v.id)}>
-                    <td className="px-3 py-3 font-mono font-semibold text-slate-800">{v.plateNumber}</td>
-                    <td className="px-3 py-3 text-slate-700">{v.brand} {v.model}</td>
-                    <td className="px-3 py-3 text-xs text-slate-500">{v.branch}</td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{repairs.length}</span>
-                    </td>
-                    <td className="px-3 py-3 font-mono font-bold text-slate-800">{fmt(repairTotal)}</td>
-                    <td className="px-3 py-3 text-slate-400">
-                      {expanded === v.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </td>
-                  </tr>
-                  {expanded === v.id && (
-                    <tr key={`${v.id}-x`}>
-                      <td colSpan={6} className="bg-slate-50 px-6 pb-4 pt-0">
-                        {(includeMode === 'repairs-only' || includeMode === 'repairs-and-parts') && (
-                          <>
-                            <p className="text-xs font-semibold text-slate-500 mt-3 mb-2">รายการซ่อม</p>
-                            <div className="space-y-1">
-                              {repairs.map(r => (
-                                <div key={r.id} className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0">
-                                  <div>
-                                    <p className="text-xs font-medium text-slate-700">{r.repairItems}</p>
-                                    <p className="text-[10px] text-slate-400">{r.date} · {r.garage}</p>
-                                  </div>
-                                  <div className="flex items-center gap-3">
-                                    <StatusBadge status={r.status} />
-                                    <span className="font-mono text-xs font-semibold text-slate-800">{fmt(r.total)}</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </>
-                        )}
-                        {(includeMode === 'repairs-and-parts' || includeMode === 'parts-only') && parts.length > 0 && (
-                          <>
-                            <p className="text-xs font-semibold text-slate-500 mt-4 mb-2">อะไหล่ย่อย ({parts.length} รายการ)</p>
-                            <div className="space-y-1">
-                              {parts.map(p => (
-                                <div key={p.id} className="flex items-center justify-between py-1 border-b border-slate-100 last:border-0 text-xs">
-                                  <div>
-                                    <span className="font-medium text-slate-700">{p.name}</span>
-                                    <span className="ml-2 text-slate-400">{p.type} · {p.quantity} {p.unit}</span>
-                                  </div>
-                                  <span className="font-mono text-slate-700">{fmt(p.total)}</span>
-                                </div>
-                              ))}
-                              <div className="flex justify-between pt-1 text-xs font-bold text-[#1565C0]">
-                                <span>รวมอะไหล่</span>
-                                <span className="font-mono">{fmt(partsTotal)}</span>
-                              </div>
-                            </div>
-                          </>
-                        )}
+              {filtered.map((row) => {
+                const { v, repairs, parts, repairTotal, partsTotal } = row;
+                return (
+                  <>
+                    <tr key={v.id} className="hover:bg-slate-50 cursor-pointer"
+                      onClick={() => {
+                        setDetailVehicle(row);
+                        setExpanded(expanded === v.id ? null : v.id);
+                      }}>
+                      <td className="px-3 py-3 font-mono font-semibold text-slate-800">{v.plateNumber}</td>
+                      <td className="px-3 py-3 text-slate-700">{v.brand} {v.model}</td>
+                      <td className="px-3 py-3 text-xs text-slate-500">{v.branch}</td>
+                      <td className="px-3 py-3 text-center">
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{repairs.length}</span>
+                      </td>
+                      <td className="px-3 py-3 font-mono font-bold text-slate-800">{fmt(repairTotal)}</td>
+                      <td className="px-3 py-3 text-slate-400">
+                        {expanded === v.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </td>
                     </tr>
-                  )}
-                </>
-              ))}
+                    {expanded === v.id && (
+                      <tr key={`${v.id}-x`}>
+                        <td colSpan={6} className="bg-slate-50 px-6 pb-4 pt-0">
+                          {(includeMode === 'repairs-only' || includeMode === 'repairs-and-parts') && (
+                            <>
+                              <p className="text-xs font-semibold text-slate-500 mt-3 mb-2">รายการซ่อม</p>
+                              <div className="space-y-1">
+                                {repairs.map(r => (
+                                  <div key={r.id} className="flex items-center justify-between py-1.5 border-b border-slate-100 last:border-0">
+                                    <div>
+                                      <p className="text-xs font-medium text-slate-700">{r.repairItems}</p>
+                                      <p className="text-[10px] text-slate-400">{r.date} · {r.garage}</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <StatusBadge status={r.status} />
+                                      <span className="font-mono text-xs font-semibold text-slate-800">{fmt(r.total)}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                          {(includeMode === 'repairs-and-parts' || includeMode === 'parts-only') && parts.length > 0 && (
+                            <>
+                              <p className="text-xs font-semibold text-slate-500 mt-4 mb-2">อะไหล่ย่อย ({parts.length} รายการ)</p>
+                              <div className="space-y-1">
+                                {parts.map(p => (
+                                  <div key={p.id} className="flex items-center justify-between py-1 border-b border-slate-100 last:border-0 text-xs">
+                                    <div>
+                                      <span className="font-medium text-slate-700">{p.name}</span>
+                                      <span className="ml-2 text-slate-400">{p.type} · {p.quantity} {p.unit}</span>
+                                    </div>
+                                    <span className="font-mono text-slate-700">{fmt(p.total)}</span>
+                                  </div>
+                                ))}
+                                <div className="flex justify-between pt-1 text-xs font-bold text-[#1565C0]">
+                                  <span>รวมอะไหล่</span>
+                                  <span className="font-mono">{fmt(partsTotal)}</span>
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </>
+                );
+              })}
             </tbody>
             <tfoot className="border-t-2 border-slate-200 bg-slate-50">
               <tr>
@@ -175,16 +191,114 @@ function ByVehicleReport({ includeMode }: { includeMode: IncludeMode }) {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Vehicle Detail Drawer */}
+      {detailVehicle && (
+        <div className="fixed inset-0 z-50" onClick={() => setDetailVehicle(null)}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div className="fixed top-0 right-0 h-full w-[560px] bg-white shadow-2xl z-50 flex flex-col"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-semibold text-slate-800 font-mono">{detailVehicle.v.plateNumber}</h3>
+                <p className="text-xs text-slate-500">{detailVehicle.v.brand} {detailVehicle.v.model} · {detailVehicle.v.branch}</p>
+              </div>
+              <button onClick={() => setDetailVehicle(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+              {/* Repair list */}
+              {(includeMode === 'repairs-only' || includeMode === 'repairs-and-parts') && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-2">รายการซ่อม ({detailVehicle.repairs.length} รายการ)</p>
+                  <div className="space-y-2">
+                    {detailVehicle.repairs.map(r => (
+                      <div key={r.id} className="bg-slate-50 rounded-lg p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-800">{r.repairItems}</p>
+                            <p className="text-xs text-slate-500 mt-0.5">{r.docNumber} · {r.date} · {r.garage}</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <StatusBadge status={r.status} />
+                            <span className="font-mono text-sm font-bold text-slate-800">{fmt(r.total)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {/* Parts list */}
+              {(includeMode === 'repairs-and-parts' || includeMode === 'parts-only') && detailVehicle.parts.length > 0 && (
+                <div>
+                  <p className="text-xs font-semibold text-slate-500 mb-2">รายการอะไหล่ ({detailVehicle.parts.length} รายการ)</p>
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          {['ชื่อ','ประเภท','จำนวน','หน่วย','ราคา/หน่วย','รวม'].map(h => (
+                            <th key={h} className="px-3 py-2 text-left font-medium text-slate-500">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {detailVehicle.parts.map(p => (
+                          <tr key={p.id}>
+                            <td className="px-3 py-2 font-medium text-slate-700">{p.name}</td>
+                            <td className="px-3 py-2 text-slate-500">{p.type}</td>
+                            <td className="px-3 py-2 text-right font-mono">{p.quantity}</td>
+                            <td className="px-3 py-2 text-slate-500">{p.unit}</td>
+                            <td className="px-3 py-2 text-right font-mono">{fmt(p.unitPrice)}</td>
+                            <td className="px-3 py-2 text-right font-mono font-semibold">{fmt(p.total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                      <tfoot className="border-t border-slate-200 bg-slate-50">
+                        <tr>
+                          <td colSpan={5} className="px-3 py-2 text-right font-semibold text-slate-600">รวมอะไหล่</td>
+                          <td className="px-3 py-2 text-right font-mono font-bold text-[#1565C0]">{fmt(detailVehicle.partsTotal)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="border-t border-slate-100 px-5 py-4 bg-slate-50">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-slate-600">ค่าซ่อมรวม</span>
+                <span className="font-mono text-lg font-bold text-[#1565C0]">{fmt(detailVehicle.repairTotal)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ─── Report Tab: By Repair ────────────────────────────────────────────────────
 
+type EnrichedRepair = {
+  id: string;
+  docNumber: string;
+  date: string;
+  vehicleId: string;
+  repairItems: string;
+  garage: string;
+  total: number;
+  status: string;
+  vehicle?: typeof vehicles[0];
+  parts: typeof repairItems;
+};
+
 function ByRepairReport({ includeMode }: { includeMode: IncludeMode }) {
   const [search, setSearch] = useState('');
   const [vehicleId, setVehicleId] = useState('');
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [detailRepair, setDetailRepair] = useState<EnrichedRepair | null>(null);
 
   const enriched = useMemo(() => repairRecords.map(r => ({
     ...r,
@@ -230,8 +344,13 @@ function ByRepairReport({ includeMode }: { includeMode: IncludeMode }) {
             <tbody className="divide-y divide-slate-50">
               {filtered.map(r => (
                 <>
-                  <tr key={r.id} className={`hover:bg-slate-50 cursor-pointer ${r.parts.length > 0 && includeMode !== 'repairs-only' ? '' : ''}`}
-                    onClick={() => r.parts.length > 0 && includeMode !== 'repairs-only' ? setExpanded(expanded === r.id ? null : r.id) : undefined}>
+                  <tr key={r.id} className="hover:bg-slate-50 cursor-pointer"
+                    onClick={() => {
+                      setDetailRepair(r);
+                      if (r.parts.length > 0 && includeMode !== 'repairs-only') {
+                        setExpanded(expanded === r.id ? null : r.id);
+                      }
+                    }}>
                     <td className="px-3 py-3 font-mono text-xs text-slate-500">{r.docNumber}</td>
                     <td className="px-3 py-3 text-xs text-slate-600 whitespace-nowrap">{r.date}</td>
                     <td className="px-3 py-3 font-mono font-medium text-slate-800">{r.vehicle?.plateNumber ?? '-'}</td>
@@ -306,6 +425,102 @@ function ByRepairReport({ includeMode }: { includeMode: IncludeMode }) {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Repair Detail Drawer */}
+      {detailRepair && (
+        <div className="fixed inset-0 z-50" onClick={() => setDetailRepair(null)}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div className="fixed top-0 right-0 h-full w-[560px] bg-white shadow-2xl z-50 flex flex-col"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-semibold text-slate-800">รายละเอียดการซ่อม</h3>
+                <p className="text-xs text-slate-500 font-mono">{detailRepair.docNumber}</p>
+              </div>
+              <button onClick={() => setDetailRepair(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+              {/* ข้อมูลการซ่อม */}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-3">ข้อมูลการซ่อม</p>
+                <div className="bg-slate-50 rounded-xl p-4 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">เลขที่เอกสาร</span>
+                    <span className="font-mono text-sm font-medium text-slate-800">{detailRepair.docNumber}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">วันที่</span>
+                    <span className="text-sm text-slate-700">{detailRepair.date}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">ยานพาหนะ</span>
+                    <div className="text-right">
+                      <p className="font-mono font-semibold text-slate-800">{detailRepair.vehicle?.plateNumber ?? '-'}</p>
+                      {detailRepair.vehicle && (
+                        <p className="text-xs text-slate-500">{detailRepair.vehicle.brand} {detailRepair.vehicle.model}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">ร้านซ่อม</span>
+                    <span className="text-sm text-slate-700">{detailRepair.garage}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">สถานะ</span>
+                    <StatusBadge status={detailRepair.status} />
+                  </div>
+                  <div className="pt-1 border-t border-slate-200">
+                    <p className="text-xs text-slate-500 mb-1">รายการซ่อม</p>
+                    <p className="text-sm text-slate-700">{detailRepair.repairItems}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* รายการอะไหล่ */}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-2">
+                  รายการอะไหล่ {detailRepair.parts.length > 0 ? `(${detailRepair.parts.length} รายการ)` : ''}
+                </p>
+                {detailRepair.parts.length === 0 ? (
+                  <div className="text-center py-6 text-xs text-slate-400 bg-slate-50 rounded-xl">ไม่มีข้อมูลอะไหล่</div>
+                ) : (
+                  <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-slate-50">
+                        <tr>
+                          {['ชื่ออะไหล่','ประเภท','จำนวน','หน่วย','ราคา/หน่วย','รวม'].map(h => (
+                            <th key={h} className="px-3 py-2 text-left font-medium text-slate-500">{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-50">
+                        {detailRepair.parts.map(p => (
+                          <tr key={p.id}>
+                            <td className="px-3 py-2 font-medium text-slate-700">{p.name}</td>
+                            <td className="px-3 py-2 text-slate-500">{p.type}</td>
+                            <td className="px-3 py-2 text-right font-mono">{p.quantity}</td>
+                            <td className="px-3 py-2 text-slate-500">{p.unit}</td>
+                            <td className="px-3 py-2 text-right font-mono">{fmt(p.unitPrice)}</td>
+                            <td className="px-3 py-2 text-right font-mono font-semibold">{fmt(p.total)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="border-t border-slate-100 px-5 py-4 bg-slate-50">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-slate-600">ยอดรวม</span>
+                <span className="font-mono text-lg font-bold text-[#1565C0]">{fmt(detailRepair.total)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -606,10 +821,22 @@ const INCLUDE_MODES: { value: IncludeMode; label: string }[] = [
 export default function RepairCostPage() {
   const [tab, setTab] = useState<ReportTab>('by-vehicle');
   const [includeMode, setIncludeMode] = useState<IncludeMode>('repairs-and-parts');
+  const [showExport, setShowExport] = useState(false);
+  const [exportWithParts, setExportWithParts] = useState(true);
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'excel'>('excel');
+  const [exportFrom, setExportFrom] = useState('');
+  const [exportTo, setExportTo] = useState('');
+  const [toast, setToast] = useState(false);
 
   const totalCost = repairRecords.reduce((s, r) => s + r.total, 0);
 
   const showInclude = tab === 'by-vehicle' || tab === 'by-repair';
+
+  function handleExport() {
+    setShowExport(false);
+    setToast(true);
+    setTimeout(() => setToast(false), 3000);
+  }
 
   return (
     <div className="space-y-5">
@@ -618,7 +845,8 @@ export default function RepairCostPage() {
           <h1 className="text-xl font-bold text-slate-800">รายงานค่าใช้จ่ายซ่อมบำรุง</h1>
           <p className="mt-0.5 text-sm text-slate-500">วิเคราะห์ค่าใช้จ่าย · รายการซ่อม · อะไหล่ · ใบสั่งซื้อ</p>
         </div>
-        <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-50">
+        <button onClick={() => setShowExport(true)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-50">
           <Download size={14} /> Export
         </button>
       </div>
@@ -674,6 +902,68 @@ export default function RepairCostPage() {
           {tab === 'purchase-orders' && <PurchaseOrderReport />}
         </div>
       </div>
+
+      {/* Export Modal */}
+      {showExport && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800">ตั้งค่า Export</h3>
+              <button onClick={() => setShowExport(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">ตั้งแต่วันที่</label>
+                  <input type="date" value={exportFrom} onChange={e => setExportFrom(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#1565C0]" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">ถึงวันที่</label>
+                  <input type="date" value={exportTo} onChange={e => setExportTo(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#1565C0]" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-2">รูปแบบ</label>
+                <div className="flex gap-2">
+                  {(['excel','pdf'] as const).map(f => (
+                    <button key={f} onClick={() => setExportFormat(f)}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors
+                        ${exportFormat === f ? 'bg-[#1565C0] border-[#1565C0] text-white' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                      {f === 'excel' ? '📊 Excel' : '📄 PDF'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={exportWithParts} onChange={e => setExportWithParts(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-[#1565C0] accent-[#1565C0]" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">รวมรายการอะไหล่ย่อย</p>
+                  <p className="text-xs text-slate-400">แสดงรายละเอียดอะไหล่แต่ละรายการในรายงาน</p>
+                </div>
+              </label>
+            </div>
+            <div className="flex gap-3 px-5 pb-5">
+              <button onClick={() => setShowExport(false)} className="flex-1 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">ยกเลิก</button>
+              <button onClick={handleExport}
+                className="flex-1 py-2 rounded-lg bg-[#1565C0] text-white text-sm font-medium flex items-center justify-center gap-2">
+                <Download size={14} />Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg">
+          กำลัง Export...
+        </div>
+      )}
     </div>
   );
 }

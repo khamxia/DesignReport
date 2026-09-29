@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import {
   Search, Download, ChevronDown, ChevronUp,
-  ShoppingCart, Package, CheckCircle, Clock, AlertTriangle,
+  ShoppingCart, Package, CheckCircle, Clock, X,
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
@@ -38,12 +38,23 @@ const GROUP_MODES: { value: GroupMode; label: string }[] = [
   { value: 'by-supplier', label: 'ตาม Supplier' },
 ];
 
+type EnrichedPO = (typeof purchaseOrders)[0] & { vehicle?: (typeof vehicles)[0] };
+
 export default function PurchaseOrderReportPage() {
   const [search, setSearch] = useState('');
   const [vehicleId, setVehicleId] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [groupMode, setGroupMode] = useState<GroupMode>('by-order');
-  const [expanded, setExpanded] = useState<string | null>(null);
+  const [groupExpanded, setGroupExpanded] = useState<string | null>(null);
+  const [detailPo, setDetailPo] = useState<EnrichedPO | null>(null);
+
+  // Export modal state
+  const [showExport, setShowExport] = useState(false);
+  const [exportWithParts, setExportWithParts] = useState(true);
+  const [exportFormat, setExportFormat] = useState<'pdf' | 'excel'>('excel');
+  const [exportFrom, setExportFrom] = useState('');
+  const [exportTo, setExportTo] = useState('');
+  const [toast, setToast] = useState(false);
 
   const enriched = useMemo(() => purchaseOrders.map(po => ({
     ...po,
@@ -98,6 +109,12 @@ export default function PurchaseOrderReportPage() {
     return Object.entries(m);
   }, [filtered]);
 
+  function handleExport() {
+    setShowExport(false);
+    setToast(true);
+    setTimeout(() => setToast(false), 3000);
+  }
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -106,7 +123,8 @@ export default function PurchaseOrderReportPage() {
           <h1 className="text-xl font-bold text-slate-800">รายงานการสั่งซื้ออะไหล่</h1>
           <p className="mt-0.5 text-sm text-slate-500">ติดตามใบสั่งซื้อ อะไหล่ย่อย ยอดรวม และสถานะ</p>
         </div>
-        <button className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-50">
+        <button onClick={() => setShowExport(true)}
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-slate-300 text-sm text-slate-600 hover:bg-slate-50">
           <Download size={14} /> Export
         </button>
       </div>
@@ -194,69 +212,31 @@ export default function PurchaseOrderReportPage() {
           <table className="w-full text-sm">
             <thead className="bg-slate-50">
               <tr>
-                {['เลขที่สั่งซื้อ','วันที่','ทะเบียน','Supplier','รายการ','มูลค่า','สถานะ',''].map(h => (
+                {['เลขที่สั่งซื้อ','วันที่','ทะเบียน','Supplier','รายการ','มูลค่า','สถานะ'].map(h => (
                   <th key={h} className="px-3 py-2.5 text-left text-xs font-medium text-slate-500 whitespace-nowrap">{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {filtered.map(po => (
-                <>
-                  <tr key={po.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpanded(expanded === po.id ? null : po.id)}>
-                    <td className="px-3 py-3 font-mono text-xs text-slate-600">{po.orderNumber}</td>
-                    <td className="px-3 py-3 text-xs text-slate-600 whitespace-nowrap">{po.orderDate}</td>
-                    <td className="px-3 py-3 font-mono font-semibold text-slate-800">{po.vehicle?.plateNumber ?? '-'}</td>
-                    <td className="px-3 py-3 text-xs text-slate-700">{po.supplier}</td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{po.items.length}</span>
-                    </td>
-                    <td className="px-3 py-3 font-mono font-bold text-slate-800">{fmt(po.totalAmount)}</td>
-                    <td className="px-3 py-3"><StatusBadge status={po.status} /></td>
-                    <td className="px-3 py-3 text-slate-400">
-                      {expanded === po.id ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                    </td>
-                  </tr>
-                  {expanded === po.id && (
-                    <tr key={`${po.id}-x`}>
-                      <td colSpan={8} className="bg-slate-50 px-6 pb-4 pt-0">
-                        <p className="text-xs font-semibold text-slate-500 mt-3 mb-2">รายการอะไหล่ ({po.items.length})</p>
-                        <table className="w-full text-xs">
-                          <thead><tr className="text-[10px] text-slate-400">
-                            {['ชื่ออะไหล่','จำนวน','หน่วย','ราคาประเมิน','ราคาจริง','รับแล้ว'].map(h => (
-                              <th key={h} className="pb-1 text-left font-medium">{h}</th>
-                            ))}
-                          </tr></thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {po.items.map(item => (
-                              <tr key={item.id}>
-                                <td className="py-1.5 font-medium text-slate-700">{item.name}</td>
-                                <td className="py-1.5 text-right font-mono">{item.quantity}</td>
-                                <td className="py-1.5 text-slate-500">{item.unit}</td>
-                                <td className="py-1.5 text-right font-mono">{fmt(item.estimatedPrice)}</td>
-                                <td className="py-1.5 text-right font-mono">{item.actualPrice != null ? fmt(item.actualPrice) : '—'}</td>
-                                <td className="py-1.5 text-right font-mono text-slate-600">{item.receivedQty ?? 0}/{item.quantity}</td>
-                              </tr>
-                            ))}
-                          </tbody>
-                          <tfoot className="border-t border-slate-200">
-                            <tr>
-                              <td colSpan={3} className="pt-1.5 text-right font-semibold text-slate-600">รวม</td>
-                              <td className="pt-1.5 text-right font-mono font-bold text-[#1565C0]">{fmt(po.items.reduce((s,i)=>s+i.estimatedPrice,0))}</td>
-                              <td colSpan={2} />
-                            </tr>
-                          </tfoot>
-                        </table>
-                      </td>
-                    </tr>
-                  )}
-                </>
+                <tr key={po.id} className="hover:bg-slate-50 cursor-pointer" onClick={() => setDetailPo(po)}>
+                  <td className="px-3 py-3 font-mono text-xs text-slate-600">{po.orderNumber}</td>
+                  <td className="px-3 py-3 text-xs text-slate-600 whitespace-nowrap">{po.orderDate}</td>
+                  <td className="px-3 py-3 font-mono font-semibold text-slate-800">{po.vehicle?.plateNumber ?? '-'}</td>
+                  <td className="px-3 py-3 text-xs text-slate-700">{po.supplier}</td>
+                  <td className="px-3 py-3 text-center">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700 font-medium">{po.items.length}</span>
+                  </td>
+                  <td className="px-3 py-3 font-mono font-bold text-slate-800">{fmt(po.totalAmount)}</td>
+                  <td className="px-3 py-3"><StatusBadge status={po.status} /></td>
+                </tr>
               ))}
             </tbody>
             <tfoot className="border-t-2 border-slate-200 bg-slate-50">
               <tr>
                 <td colSpan={5} className="px-3 py-2.5 text-xs font-semibold text-slate-600">รวม ({filtered.length} ใบสั่งซื้อ)</td>
                 <td className="px-3 py-2.5 font-mono font-bold text-[#1565C0]">{fmt(totalAmount)}</td>
-                <td colSpan={2} />
+                <td />
               </tr>
             </tfoot>
           </table>
@@ -279,7 +259,7 @@ export default function PurchaseOrderReportPage() {
                 const itemCount = pos.reduce((s,po)=>s+po.items.length,0);
                 return (
                   <>
-                    <tr key={vid} className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpanded(expanded === vid ? null : vid)}>
+                    <tr key={vid} className="hover:bg-slate-50 cursor-pointer" onClick={() => setGroupExpanded(groupExpanded === vid ? null : vid)}>
                       <td className="px-3 py-3 font-mono font-semibold text-slate-800">{v?.plateNumber ?? vid}</td>
                       <td className="px-3 py-3 text-xs text-slate-700">{v ? `${v.brand} ${v.model}` : '—'}</td>
                       <td className="px-3 py-3 text-center">
@@ -290,14 +270,15 @@ export default function PurchaseOrderReportPage() {
                       </td>
                       <td className="px-3 py-3 font-mono font-bold text-slate-800">{fmt(total)}</td>
                       <td className="px-3 py-3 text-slate-400">
-                        {expanded === vid ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        {groupExpanded === vid ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </td>
                     </tr>
-                    {expanded === vid && (
+                    {groupExpanded === vid && (
                       <tr key={`${vid}-x`}>
                         <td colSpan={6} className="bg-slate-50 px-6 pb-4 pt-0">
                           {pos.map(po => (
-                            <div key={po.id} className="mt-3">
+                            <div key={po.id} className="mt-3 cursor-pointer hover:bg-slate-100 rounded-lg p-2 -mx-2 transition-colors"
+                              onClick={() => setDetailPo(po)}>
                               <p className="text-xs font-semibold text-slate-500 flex items-center gap-2 mb-1.5">
                                 {po.orderNumber} · {po.supplier}
                                 <StatusBadge status={po.status} />
@@ -339,7 +320,7 @@ export default function PurchaseOrderReportPage() {
                 const itemCount = pos.reduce((s,po)=>s+po.items.length,0);
                 return (
                   <>
-                    <tr key={supplier} className="hover:bg-slate-50 cursor-pointer" onClick={() => setExpanded(expanded === supplier ? null : supplier)}>
+                    <tr key={supplier} className="hover:bg-slate-50 cursor-pointer" onClick={() => setGroupExpanded(groupExpanded === supplier ? null : supplier)}>
                       <td className="px-3 py-3 font-semibold text-slate-800">{supplier}</td>
                       <td className="px-3 py-3 text-center">
                         <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">{pos.length}</span>
@@ -349,16 +330,17 @@ export default function PurchaseOrderReportPage() {
                       </td>
                       <td className="px-3 py-3 font-mono font-bold text-slate-800">{fmt(total)}</td>
                       <td className="px-3 py-3 text-slate-400">
-                        {expanded === supplier ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        {groupExpanded === supplier ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                       </td>
                     </tr>
-                    {expanded === supplier && (
+                    {groupExpanded === supplier && (
                       <tr key={`${supplier}-x`}>
                         <td colSpan={5} className="bg-slate-50 px-6 pb-4 pt-0">
                           {pos.map(po => {
                             const v = vehicles.find(vv => vv.id === po.vehicleId);
                             return (
-                              <div key={po.id} className="mt-3">
+                              <div key={po.id} className="mt-3 cursor-pointer hover:bg-slate-100 rounded-lg p-2 -mx-2 transition-colors"
+                                onClick={() => setDetailPo(po)}>
                                 <p className="text-xs font-semibold text-slate-500 flex items-center gap-2 mb-1.5">
                                   {po.orderNumber}
                                   <span className="font-mono text-slate-600">{v?.plateNumber}</span>
@@ -386,6 +368,162 @@ export default function PurchaseOrderReportPage() {
           </table>
         )}
       </div>
+
+      {/* PO Detail Drawer */}
+      {detailPo && (
+        <div className="fixed inset-0 z-50" onClick={() => setDetailPo(null)}>
+          <div className="absolute inset-0 bg-black/30" />
+          <div className="fixed top-0 right-0 h-full w-[560px] bg-white shadow-2xl z-50 flex flex-col"
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <div>
+                <h3 className="font-semibold text-slate-800 font-mono">{detailPo.orderNumber}</h3>
+                <div className="mt-0.5"><StatusBadge status={detailPo.status} /></div>
+              </div>
+              <button onClick={() => setDetailPo(null)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+              {/* ข้อมูล Order */}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-3">ข้อมูล Order</p>
+                <div className="bg-slate-50 rounded-xl p-4 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">ยานพาหนะ</span>
+                    <div className="text-right">
+                      <p className="font-mono font-semibold text-slate-800">{detailPo.vehicle?.plateNumber ?? '-'}</p>
+                      {detailPo.vehicle && (
+                        <p className="text-xs text-slate-500">{detailPo.vehicle.brand} {detailPo.vehicle.model}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">ผู้จำหน่าย (Supplier)</span>
+                    <span className="text-sm text-slate-700">{detailPo.supplier}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-500">วันที่สั่งซื้อ</span>
+                    <span className="text-sm text-slate-700">{detailPo.orderDate}</span>
+                  </div>
+                  {detailPo.notes && (
+                    <div className="pt-1 border-t border-slate-200">
+                      <p className="text-xs text-slate-500 mb-1">หมายเหตุ</p>
+                      <p className="text-sm text-slate-700">{detailPo.notes}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* รายการอะไหล่ */}
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-2">รายการอะไหล่ ({detailPo.items.length} รายการ)</p>
+                <div className="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                  <table className="w-full text-xs">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        {['ชื่ออะไหล่','จำนวน','หน่วย','ราคาประเมิน','ราคาจริง','รับแล้ว'].map(h => (
+                          <th key={h} className="px-3 py-2 text-left font-medium text-slate-500">{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50">
+                      {detailPo.items.map(item => {
+                        const pct = item.quantity > 0 ? Math.round(((item.receivedQty ?? 0) / item.quantity) * 100) : 0;
+                        return (
+                          <tr key={item.id}>
+                            <td className="px-3 py-2.5 font-medium text-slate-700">{item.name}</td>
+                            <td className="px-3 py-2.5 text-right font-mono">{item.quantity}</td>
+                            <td className="px-3 py-2.5 text-slate-500">{item.unit}</td>
+                            <td className="px-3 py-2.5 text-right font-mono">{fmt(item.estimatedPrice)}</td>
+                            <td className="px-3 py-2.5 text-right font-mono">{item.actualPrice != null ? fmt(item.actualPrice) : '—'}</td>
+                            <td className="px-3 py-2.5">
+                              <div className="flex items-center gap-1.5">
+                                <div className="flex-1 bg-slate-200 rounded-full h-1.5">
+                                  <div className="bg-[#1565C0] h-1.5 rounded-full" style={{ width: `${pct}%` }} />
+                                </div>
+                                <span className="font-mono text-slate-600 text-[10px] whitespace-nowrap">{item.receivedQty ?? 0}/{item.quantity}</span>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+            <div className="border-t border-slate-100 px-5 py-4 bg-slate-50">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-slate-600">สรุปมูลค่ารวม</span>
+                <span className="font-mono text-lg font-bold text-[#1565C0]">{fmt(detailPo.totalAmount)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Modal */}
+      {showExport && (
+        <div className="fixed inset-0 bg-black/50 z-[60] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100">
+              <h3 className="font-semibold text-slate-800">ตั้งค่า Export</h3>
+              <button onClick={() => setShowExport(false)} className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400">
+                <X size={16} />
+              </button>
+            </div>
+            <div className="px-5 py-4 space-y-4">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">ตั้งแต่วันที่</label>
+                  <input type="date" value={exportFrom} onChange={e => setExportFrom(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#1565C0]" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">ถึงวันที่</label>
+                  <input type="date" value={exportTo} onChange={e => setExportTo(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:border-[#1565C0]" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-600 mb-2">รูปแบบ</label>
+                <div className="flex gap-2">
+                  {(['excel','pdf'] as const).map(f => (
+                    <button key={f} onClick={() => setExportFormat(f)}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors
+                        ${exportFormat === f ? 'bg-[#1565C0] border-[#1565C0] text-white' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
+                      {f === 'excel' ? '📊 Excel' : '📄 PDF'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={exportWithParts} onChange={e => setExportWithParts(e.target.checked)}
+                  className="w-4 h-4 rounded border-slate-300 text-[#1565C0] accent-[#1565C0]" />
+                <div>
+                  <p className="text-sm font-medium text-slate-700">รวมรายการอะไหล่ย่อย</p>
+                  <p className="text-xs text-slate-400">แสดงรายละเอียดอะไหล่แต่ละรายการในรายงาน</p>
+                </div>
+              </label>
+            </div>
+            <div className="flex gap-3 px-5 pb-5">
+              <button onClick={() => setShowExport(false)} className="flex-1 py-2 border border-slate-200 rounded-lg text-sm text-slate-600 hover:bg-slate-50">ยกเลิก</button>
+              <button onClick={handleExport}
+                className="flex-1 py-2 rounded-lg bg-[#1565C0] text-white text-sm font-medium flex items-center justify-center gap-2">
+                <Download size={14} />Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] bg-slate-800 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg">
+          กำลัง Export...
+        </div>
+      )}
     </div>
   );
 }
